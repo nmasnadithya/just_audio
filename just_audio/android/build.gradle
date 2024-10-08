@@ -9,7 +9,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.3.0'
+        classpath 'com.android.tools.build:gradle:8.7.0'
     }
 }
 
@@ -43,16 +43,15 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility 1.8
-        targetCompatibility 1.8
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     dependencies {
-        def exoplayer_version = "2.18.7"
-        implementation "com.google.android.exoplayer:exoplayer-core:$exoplayer_version"
-        implementation "com.google.android.exoplayer:exoplayer-dash:$exoplayer_version"
-        implementation "com.google.android.exoplayer:exoplayer-hls:$exoplayer_version"
-        implementation "com.google.android.exoplayer:exoplayer-smoothstreaming:$exoplayer_version"
+        implementation "com.google.android.exoplayer:exoplayer-core:2.19.1"
+        implementation "com.google.android.exoplayer:exoplayer-dash:2.19.1"
+        implementation "com.google.android.exoplayer:exoplayer-hls:2.19.1"
+        implementation "com.google.android.exoplayer:exoplayer-smoothstreaming:2.19.1"
     }
 }
 
