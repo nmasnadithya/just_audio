@@ -8,43 +8,56 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.DefaultLivePlaybackSpeedControl;
-import com.google.android.exoplayer2.DefaultLoadControl;
-import com.google.android.exoplayer2.DefaultRenderersFactory;
-import com.google.android.exoplayer2.ExoPlaybackException;
-import com.google.android.exoplayer2.LivePlaybackSpeedControl;
-import com.google.android.exoplayer2.LoadControl;
-import com.google.android.exoplayer2.MediaItem;
-import com.google.android.exoplayer2.PlaybackException;
-import com.google.android.exoplayer2.PlaybackParameters;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.Player.PositionInfo;
-import com.google.android.exoplayer2.ExoPlayer;
-import com.google.android.exoplayer2.Timeline;
-import com.google.android.exoplayer2.Tracks;
-import com.google.android.exoplayer2.audio.AudioAttributes;
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
-import com.google.android.exoplayer2.metadata.Metadata;
-import com.google.android.exoplayer2.metadata.MetadataOutput;
-import com.google.android.exoplayer2.metadata.icy.IcyHeaders;
-import com.google.android.exoplayer2.metadata.icy.IcyInfo;
-import com.google.android.exoplayer2.source.ClippingMediaSource;
-import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
-import com.google.android.exoplayer2.source.MediaSource;
-import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.source.ShuffleOrder;
-import com.google.android.exoplayer2.source.ShuffleOrder.DefaultShuffleOrder;
-import com.google.android.exoplayer2.source.SilenceMediaSource;
-import com.google.android.exoplayer2.source.TrackGroup;
-import com.google.android.exoplayer2.source.dash.DashMediaSource;
-import com.google.android.exoplayer2.source.hls.HlsMediaSource;
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSource;
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
-import com.google.android.exoplayer2.util.MimeTypes;
-import com.google.android.exoplayer2.util.Util;
+
+import androidx.annotation.NonNull;
+import androidx.media3.common.AudioAttributes;
+import androidx.media3.common.C;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.Metadata;
+import androidx.media3.common.MimeTypes;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.PlaybackParameters;
+import androidx.media3.common.Player;
+import androidx.media3.common.Player.PositionInfo;
+import androidx.media3.common.Timeline;
+import androidx.media3.common.TrackGroup;
+import androidx.media3.common.TrackSelectionParameters;
+import androidx.media3.common.Tracks;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.common.util.Util;
+import androidx.media3.datasource.DataSource;
+import androidx.media3.datasource.DefaultDataSource;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl;
+import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.ExoPlaybackException;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.LivePlaybackSpeedControl;
+import androidx.media3.exoplayer.LoadControl;
+import androidx.media3.exoplayer.dash.DashMediaSource;
+import androidx.media3.exoplayer.hls.HlsMediaSource;
+import androidx.media3.exoplayer.metadata.MetadataOutput;
+import androidx.media3.exoplayer.source.ClippingMediaSource;
+import androidx.media3.exoplayer.source.ConcatenatingMediaSource;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.exoplayer.source.ProgressiveMediaSource;
+import androidx.media3.exoplayer.source.ShuffleOrder;
+import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder;
+import androidx.media3.exoplayer.source.SilenceMediaSource;
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
+import androidx.media3.extractor.DefaultExtractorsFactory;
+import androidx.media3.extractor.metadata.icy.IcyHeaders;
+import androidx.media3.extractor.metadata.icy.IcyInfo;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+
 import io.flutter.Log;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.EventChannel;
@@ -53,16 +66,8 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
 
-public class AudioPlayer implements MethodCallHandler, Player.Listener, MetadataOutput {
+@UnstableApi public class AudioPlayer implements MethodCallHandler, Player.Listener, MetadataOutput {
 
     static final String TAG = "AudioPlayer";
 
@@ -256,19 +261,24 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
     }
 
     @Override
-    public void onPositionDiscontinuity(PositionInfo oldPosition, PositionInfo newPosition, int reason) {
+    public void onPositionDiscontinuity(@NonNull PositionInfo oldPosition, @NonNull PositionInfo newPosition, int reason) {
         updatePosition();
         switch (reason) {
-        case Player.DISCONTINUITY_REASON_AUTO_TRANSITION:
-        case Player.DISCONTINUITY_REASON_SEEK:
-            updateCurrentIndex();
-            break;
+            case Player.DISCONTINUITY_REASON_AUTO_TRANSITION:
+            case Player.DISCONTINUITY_REASON_SEEK:
+                updateCurrentIndex();
+                break;
+            case Player.DISCONTINUITY_REASON_INTERNAL:
+            case Player.DISCONTINUITY_REASON_REMOVE:
+            case Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT:
+            case Player.DISCONTINUITY_REASON_SKIP:
+                break;
         }
         broadcastImmediatePlaybackEvent();
     }
 
     @Override
-    public void onTimelineChanged(Timeline timeline, int reason) {
+    public void onTimelineChanged(@NonNull Timeline timeline, int reason) {
         if (initialPos != C.TIME_UNSET || initialIndex != null) {
             int windowIndex = initialIndex != null ? initialIndex : 0;
             player.seekTo(windowIndex, initialPos);
@@ -363,7 +373,7 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
     }
 
     @Override
-    public void onPlayerError(PlaybackException error) {
+    public void onPlayerError(@NonNull PlaybackException error) {
         if (error instanceof ExoPlaybackException) {
             final ExoPlaybackException exoError = (ExoPlaybackException)error;
             switch (exoError.type) {
@@ -613,7 +623,7 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
     private MediaSource decodeAudioSource(final Object json) {
         Map<?, ?> map = (Map<?, ?>)json;
         String id = (String)map.get("id");
-        switch ((String)map.get("type")) {
+        switch ((String) Objects.requireNonNull(map.get("type"))) {
         case "progressive":
             return new ProgressiveMediaSource.Factory(buildDataSourceFactory(mapGet(map, "headers")), buildExtractorsFactory(mapGet(map, "options")))
                     .createMediaSource(new MediaItem.Builder()
@@ -686,8 +696,6 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
         String type = (String)map.get("type");
         switch (type) {
         case "AndroidLoudnessEnhancer":
-            if (Build.VERSION.SDK_INT < 19)
-                throw new RuntimeException("AndroidLoudnessEnhancer requires minSdkVersion >= 19");
             int targetGain = (int)Math.round((((Double)map.get("targetGain")) * 1000.0));
             LoudnessEnhancer loudnessEnhancer = new LoudnessEnhancer(audioSessionId);
             loudnessEnhancer.setTargetGain(targetGain);
@@ -766,10 +774,15 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
                 builder.setLivePlaybackSpeedControl(livePlaybackSpeedControl);
             }
             if (offloadSchedulingEnabled) {
-                builder.setRenderersFactory(new DefaultRenderersFactory(context).setEnableAudioOffload(true));
+                DefaultTrackSelector trackSelector = new DefaultTrackSelector(context);
+                trackSelector.setParameters(new DefaultTrackSelector.Parameters.Builder(context)
+                                .setAudioOffloadPreferences(new TrackSelectionParameters.AudioOffloadPreferences.Builder()
+                                        .setAudioOffloadMode(TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED)
+                                        .build()
+                                ).build());
+                builder.setTrackSelector(trackSelector);
             }
             player = builder.build();
-            player.experimentalSetOffloadSchedulingEnabled(offloadSchedulingEnabled);
             setAudioSessionId(player.getAudioSessionId());
             player.addListener(this);
         }
@@ -792,18 +805,18 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
     }
 
     private void audioEffectSetEnabled(String type, boolean enabled) {
-        audioEffectsMap.get(type).setEnabled(enabled);
+        Objects.requireNonNull(audioEffectsMap.get(type)).setEnabled(enabled);
     }
 
     private void loudnessEnhancerSetTargetGain(double targetGain) {
         int targetGainMillibels = (int)Math.round(targetGain * 1000.0);
-        ((LoudnessEnhancer)audioEffectsMap.get("AndroidLoudnessEnhancer")).setTargetGain(targetGainMillibels);
+        ((LoudnessEnhancer) Objects.requireNonNull(audioEffectsMap.get("AndroidLoudnessEnhancer"))).setTargetGain(targetGainMillibels);
     }
 
     private Map<String, Object> equalizerAudioEffectGetParameters() {
         Equalizer equalizer = (Equalizer)audioEffectsMap.get("AndroidEqualizer");
         ArrayList<Object> rawBands = new ArrayList<>();
-        for (short i = 0; i < equalizer.getNumberOfBands(); i++) {
+        for (short i = 0; i < Objects.requireNonNull(equalizer).getNumberOfBands(); i++) {
             rawBands.add(mapOf(
                 "index", i,
                 "lowerFrequency", (double)equalizer.getBandFreqRange(i)[0] / 1000.0,
@@ -822,7 +835,7 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
     }
 
     private void equalizerBandSetGain(int bandIndex, double gain) {
-        ((Equalizer)audioEffectsMap.get("AndroidEqualizer")).setBandLevel((short)bandIndex, (short)(Math.round(gain * 1000.0)));
+        ((Equalizer) Objects.requireNonNull(audioEffectsMap.get("AndroidEqualizer"))).setBandLevel((short)bandIndex, (short)(Math.round(gain * 1000.0)));
     }
 
     /// Creates an event based on the current state.
@@ -933,6 +946,7 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
         // fragment. e.g.  https://somewhere.com/somestream?x=etc#.m3u8
         String fragment = uri.getFragment();
         String filename = fragment != null && fragment.contains(".") ? fragment : uri.getPath();
+        assert filename != null;
         return filename.replaceAll("^.*\\.", "").toLowerCase();
     }
 
